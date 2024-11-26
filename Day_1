@@ -1,0 +1,40 @@
+--- What is SQL?
+SQL (Structured Query Language) is a programming language used to manage and manipulate data in a database. It helps you perform various operations like storing, retrieving, updating, and deleting data.
+
+Key Features of SQL
+Data Storage and Retrieval:
+
+Store data in a structured way.
+Retrieve specific data when needed.
+Data Manipulation:
+
+Modify existing data (update, delete, or add new data).
+Querying Data:
+
+Ask specific questions from the database to get useful information.
+Data Organization:
+
+Group, sort, and filter data for better insights.
+Database Management:
+
+Create, modify, or delete database structures (like tables, views, etc.).
+Basic SQL Operations
+Operation	Purpose	Example Syntax
+SELECT	Retrieve data	SELECT * FROM Employees;
+INSERT	Add new data	INSERT INTO Employees (Name, Age) VALUES ('John', 30);
+UPDATE	Change existing data	UPDATE Employees SET Age = 31 WHERE Name = 'John';
+DELETE	Remove data	DELETE FROM Employees WHERE Name = 'John';
+CREATE	Create database objects	CREATE TABLE Employees (ID INT, Name NVARCHAR(50));
+DROP	Delete database objects	DROP TABLE Employees;
+Why Use SQL?
+Easy to Learn: SQL is written in simple, English-like statements.
+Universal: Most database systems, like MySQL, SQL Server, and PostgreSQL, support SQL.
+Powerful: SQL can handle large amounts of data efficiently.
+Flexible: Works for small projects as well as large enterprise systems.
+Common SQL Terms
+Database: A collection of organized data.
+Table: A structure in a database where data is stored in rows and columns.
+Row (Record): A single entry in a table (e.g., details of one employee).
+Column (Field): A specific piece of data for all rows (e.g., "Name" or "Age").
+Primary Key: A unique identifier for each row in a table.
+Foreign Key: A link between two tables based on a common column.
