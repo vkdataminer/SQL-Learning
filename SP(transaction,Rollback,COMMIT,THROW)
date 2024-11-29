@@ -1,0 +1,418 @@
+Stored procedure (SP) (transaction)
+- To implement a stored procedure with a transaction for inserting data into two related tables, follow these steps. 
+Using a transaction ensures that either all operations succeed or none are applied in case of an error.
+
+--Example Tables-------
+
+ParentTable:
+
+ParentID (Primary Key, auto-increment)
+ParentName
+
+ChildTable:
+
+ChildID (Primary Key, auto-increment)
+ParentID (Foreign Key, references ParentTable.ParentID)
+ChildName
+
+--------------------------
+-----Create ParentTable
+CREATE TABLE ParentTable (
+    ParentID INT IDENTITY(1,1) PRIMARY KEY, -- Auto-increment primary key
+    ParentName NVARCHAR(100) NOT NULL       -- Name of the parent (not null)
+);
+
+----Create ChildTable
+CREATE TABLE ChildTable (
+    ChildID INT IDENTITY(1,1) PRIMARY KEY, -- Auto-increment primary key
+    ParentID INT NOT NULL,                 -- Foreign key referencing ParentTable
+    ChildName NVARCHAR(100) NOT NULL,      -- Name of the child (not null)
+    
+    -- Define foreign key constraint to reference ParentTable
+    CONSTRAINT FK_ChildTable_Parent FOREIGN KEY (ParentID) 
+    REFERENCES ParentTable(ParentID) 
+    ON DELETE CASCADE -- Deletes child records if the parent is deleted
+);
+
+------
+Key Details:
+ParentID in ParentTable is the primary key and auto-increments with each new record.
+ParentID in ChildTable is a foreign key referencing ParentTable(ParentID), ensuring relational integrity.
+ON DELETE CASCADE:
+Automatically deletes child records if the corresponding parent is deleted.
+Useful for maintaining clean data relationships.
+-------------------
+
+----Example Inserts and Query
+-----Insert into ParentTable:
+INSERT INTO ParentTable (ParentName)
+VALUES ('Parent A'), ('Parent B');
+
+--------Insert into ChildTable:
+INSERT INTO ChildTable (ParentID, ChildName)
+VALUES (1, 'Child 1'), (1, 'Child 2'), (2, 'Child 3');
+
+-----------------------------------------------------------------------------------------------------------------------------------
+#Stored Procedure Example
+--Here is a stored procedure that:
+
+--Inserts a record into ParentTable and retrieves the generated ParentID.
+---Uses the retrieved ParentID to insert multiple rows into ChildTable
+------------------------##############################---------------------------------
+CREATE PROCEDURE InsertParentAndChildrenInTransaction
+    @ParentName NVARCHAR(100),
+    @ChildNames NVARCHAR(MAX) -- Comma-separated child names
+AS
+BEGIN
+    -- Start a transaction
+    BEGIN TRANSACTION;
+
+    BEGIN TRY
+        -- Insert data into ParentTable
+        INSERT INTO ParentTable (ParentName)
+        VALUES (@ParentName);
+
+        -- Get the new ParentID
+        DECLARE @NewParentID INT;
+        SET @NewParentID = SCOPE_IDENTITY();
+
+        -- Split @ChildNames (comma-separated) into a temporary table
+        DECLARE @ChildNamesTable TABLE (ChildName NVARCHAR(100));
+        INSERT INTO @ChildNamesTable (ChildName)
+        SELECT LTRIM(RTRIM(value))
+        FROM STRING_SPLIT(@ChildNames, ',');
+
+        -- Insert data into ChildTable for each child
+        INSERT INTO ChildTable (ParentID, ChildName)
+        SELECT @NewParentID, ChildName
+        FROM @ChildNamesTable;
+
+        -- Commit the transaction
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        -- Rollback the transaction in case of an error
+        ROLLBACK TRANSACTION;
+
+        -- Return the error message
+        THROW;
+    END CATCH;
+END;
+------------------------##############################---------------------------------
+### Usage
+----To call the procedure, use the following SQL:
+-- Example Input
+DECLARE @ChildNames NVARCHAR(MAX) = 'Child1,Child2,Child3';
+
+-- Execute the Stored Procedure
+EXEC InsertParentAndChildrenInTransaction
+    @ParentName = 'Parent A',
+    @ChildNames = @ChildNames;
+ 
+#Out Put
+ParentTable:
+ParentID | ParentName
+-------- | ----------
+1        | Parent A
+-----------
+ChildTable:
+
+ChildID | ParentID | ChildName
+------- | -------- | ----------
+1       | 1        | Child1
+2       | 1        | Child2
+3       | 1        | Child3
+
+
+-------------------------------------------------------------------------------------------
+-------------### Here’s a line-by-line explanation of the stored procedure InsertParentAndChildrenInTransaction:-------------### 
+1. Stored Procedure Definition
+----CREATE PROCEDURE InsertParentAndChildrenInTransaction
+    @ParentName NVARCHAR(100),         -- Input parameter for the parent name
+    @ChildNames NVARCHAR(MAX)          -- Input parameter for child names as a comma-separated string
+AS-----
+
+# What it does:
+# Defines a stored procedure named InsertParentAndChildrenInTransaction.
+# Accepts two parameters:
+@ParentName: Name of the parent (e.g., 'Parent A').
+@ChildNames: Comma-separated list of child names (e.g., 'Child 1,Child 2,Child 3').
+
+--------------------------------------------------------
+2. Start a Transaction
+---BEGIN TRANSACTION;----
+What it does:
+Starts a database transaction, ensuring all operations inside it are treated as a single unit.
+If something goes wrong, all changes can be undone using ROLLBACK.
+
+----------------------------------------------------------------
+3. Start a Try-Catch Block
+-----BEGIN TRY---
+#What it does:
+Begins a block to handle errors. If no error occurs, the commands inside TRY run successfully.
+----------------------------------------------------------------
+4. Insert into ParentTable
+
+INSERT INTO ParentTable (ParentName)
+VALUES (@ParentName);
+
+What it does:
+Inserts the value of @ParentName (e.g., 'Parent A') into the ParentTable.
+
+-----------------------------------------------------------------------
+5. Get the New ParentID
+
+DECLARE @NewParentID INT;
+SET @NewParentID = SCOPE_IDENTITY();
+
+# What it does:
+Declares a variable @NewParentID to store the ParentID of the newly inserted record.
+SCOPE_IDENTITY() retrieves the ParentID generated by the last INSERT statement.
+
+Example:
+If Parent A was inserted as the first record, @NewParentID = 1.
+---------------------------------------------------
+6. Split Child Names into a Temporary Table
+ 
+----DECLARE @ChildNamesTable TABLE (ChildName NVARCHAR(100));
+INSERT INTO @ChildNamesTable (ChildName)
+SELECT LTRIM(RTRIM(value))
+FROM STRING_SPLIT(@ChildNames, ',');---------
+
+# What it does:
+Creates a temporary table @ChildNamesTable to hold child names.
+Splits the @ChildNames string (comma-separated) into individual rows using STRING_SPLIT.
+Trims any spaces using LTRIM and RTRIM.
+
+--------------------------------------------
+7. Insert into ChildTable
+
+What it does:
+Inserts each child name from @ChildNamesTable into ChildTable.
+Associates each child with the new ParentID (@NewParentID).
+
+--------------------------------------------------------
+8. Commit the Transaction
+
+COMMIT TRANSACTION;
+
+What it does:
+Saves all changes made during the transaction permanently in the database.
+This is executed only if no errors occur.
+
+--------------------------------------------------------------------------
+9. Catch Block for Errors
+
+BEGIN CATCH
+    ROLLBACK TRANSACTION; -- Undo changes
+    THROW; -- Raise the error to the caller
+END CATCH;
+
+
+-------What it does:
+Executes if an error occurs during the TRY block.
+ROLLBACK TRANSACTION: Undoes all changes made during the transaction, leaving the database unchanged.
+THROW: Passes the error message to the calling program or user.
+
+Example:
+
+If the ChildTable insertion fails due to a foreign key violation, the ParentTable insertion is also rolled back.
+----------------------------------------------------------------------------------
+Final Procedure Structure
+Ensures data consistency.
+Handles errors using transactions.
+Links parent and child records automatically.
+
+---------------------------------------------------##############################_------------------------------------------
+
+# Few Points understand 
+
+Using transactions in SQL helps you ensure that multiple actions are treated as one complete process. 
+If something goes wrong during the process, all changes can be undone, so the database stays in a correct state.
+
+Why Use Transactions?
+All or Nothing:
+If you do several tasks (like inserting into different tables), a transaction makes sure that all tasks are completed successfully. If one task fails, none of them are saved.
+
+Consistency:
+Ensures the database remains correct. For example, if you add a parent and its child, both must succeed together, or neither should be added.
+
+Error Handling:
+If an error happens, the transaction can undo all the changes made so far, preventing incomplete data from being saved.
+
+Group Related Tasks:
+For actions that depend on each other (like transferring money from one account to another), transactions ensure that all parts happen or none do.
+
+Example: Booking a Ticket
+Step 1: Deduct a seat from the available seats.
+Step 2: Save the customer’s ticket.
+If Step 1 works but Step 2 fails (e.g., the database crashes), the transaction will undo Step 1 to make sure the database doesn't end up with one seat less but no ticket issued.
+
+
+Code: sql
+BEGIN TRANSACTION;
+
+-- Deduct a seat
+UPDATE Flights SET AvailableSeats = AvailableSeats - 1 WHERE FlightID = 123;
+
+-- Insert ticket (if this fails, everything is rolled back)
+INSERT INTO Tickets (CustomerID, FlightID) VALUES (1, 123);
+
+-- If everything is fine, save changes
+COMMIT TRANSACTION;
+------------------------------------------###########################------------------------------------------------------------
+
+"What is meanig why use " Start a Try-Catch Block""---------
+A Try-Catch block is a mechanism used in programming to handle errors or exceptions that may occur during the execution of a program. It helps prevent the program from crashing and allows you to manage errors in a more controlled way.
+
+Meaning and Purpose:
+Try Block: The code that might cause an error is written inside the "try" block. If there is an error during the execution of this code, it will be caught by the "catch" block.
+Catch Block: If an error occurs inside the try block, the program "catches" the error and runs the code inside the catch block. This way, you can handle the error gracefully instead of allowing the program to crash.
+Why use a Try-Catch Block?
+Error Handling: It lets you handle errors without crashing your program.
+Graceful Recovery: You can log errors, provide feedback to users, or perform corrective actions when something goes wrong.
+Improved User Experience: Instead of an app crashing, you can show meaningful error messages, allowing users to understand what's going wrong.
+Debugging and Logging: Catching errors allows you to log them, making it easier to debug and fix issues in the future.
+
+---------BEGIN TRY
+    -- Code to insert data
+    INSERT INTO ParentTable (ParentName) VALUES ('Apple');
+    INSERT INTO ChildTable (ParentID, ChildName) VALUES (1, 'AppleChild');
+    
+    -- Commit if everything goes fine
+    COMMIT;
+END TRY
+BEGIN CATCH
+    -- Rollback if an error occurs
+    ROLLBACK;
+    
+    -- Return error message
+    THROW;
+END CATCH;---------
+
+Key Points:
+BEGIN TRY: Start the block of code you want to monitor for errors.
+BEGIN CATCH: If an error occurs, this part runs to handle it.
+COMMIT: Commit the transaction if everything is successful.
+ROLLBACK: Undo any changes made if an error occurs.
+This ensures that even if an error occurs, the database remains consistent and no partial data is saved.
+
+Summary:
+Using a Try-Catch block allows you to anticipate potential errors, handle them appropriately, and ensure that your program behaves predictably, even when things go wrong.
+
+----------#######################-------------------------------------------------------------------------------
+
+####SCOPE_IDENTITY() 
+is used to retrieve the last identity value (the value generated for an auto-increment column) that was inserted into the current scope.
+This is particularly useful when you need to capture the ID of a record that was just inserted into a table with an identity column, and 
+you need to use this ID in further operations (like inserting related records in another table).
+
+# Why use SCOPE_IDENTITY()?
+Get the Last Inserted ID: When you insert data into a table with an auto-increment column (like ParentID in the ParentTable),
+SQL Server automatically generates a unique ID for that row. SCOPE_IDENTITY() returns this newly generated ID from the current session and scope.
+
+Prevent Errors in Multi-User Environments: In environments where multiple users or processes are inserting data, using SCOPE_IDENTITY() ensures 
+you get the correct ID for your insert. Without it, you might retrieve the wrong ID if another insert happens at the same time, as @@IDENTITY 
+can return the last ID inserted in any table, even if it's not the one you just inserted into.
+
+Maintaining Relationships Between Tables: Often, when you insert a record into a parent table, you need to use the generated ID as a foreign key 
+when inserting into a child table. For example, after inserting a parent record, you can use SCOPE_IDENTITY() to get the ParentID and insert child records
+that reference this ID.
+
+----------#######################-------------------------------------------------------------------------------
+
+STRING_SPLIT:
+STRING_SPLIT is a built-in SQL function in SQL Server that splits a string into multiple values based on a specified delimiter. For example:
+
+SELECT value
+FROM STRING_SPLIT('apple,orange,banana', ',');
+
+This will return a result set like:
+value
+apple
+orange
+banana
+----------#######################-------------------------------------------------------------------------------
+2. LTRIM and RTRIM:
+LTRIM(): Removes any leading spaces (spaces before the text).
+RTRIM(): Removes any trailing spaces (spaces after the text).
+
+SELECT LTRIM(RTRIM(value))
+FROM STRING_SPLIT(@ChildNames, ",");
+
+Explanation:
+STRING_SPLIT(@ChildNames, ","): This function splits the string @ChildNames into multiple parts wherever there is a comma. For example, 
+if @ChildNames = 'John, Mary , Alice ' (note the spaces around some names), it will split into 'John', ' Mary ', and ' Alice '.
+RTRIM(): This trims the trailing spaces from each resulting value.
+LTRIM(): This trims the leading spaces from each resulting value.
+----
+Example:
+Suppose @ChildNames = 'John, Mary , Alice ', the query would process as:
+
+Split by Comma: John, Mary, Alice
+RTRIM(): Removes trailing spaces, so John, Mary, Alice.
+LTRIM(): Removes leading spaces, so the final result is John, Mary, Alice.
+The query will return each name with no leading or trailing spaces.
+
+Why use LTRIM and RTRIM with STRING_SPLIT:
+When splitting a string, especially if there are spaces around the delimiters (commas in this case),
+it’s important to clean up the values to avoid errors or inconsistencies.
+Trimming ensures that the values are neatly formatted for further processing (like inserting into a table or comparing with other values).
+Final Query Example:
+SELECT LTRIM(RTRIM(value))
+FROM STRING_SPLIT(@ChildNames, ',');
+
+This would return a clean list of child names from the @ChildNames string, without leading or trailing spaces.
+-------------------######################----------------------------------------
+
+
+In SQL, ROLLBACK is used to undo a transaction and revert any changes made during the transaction. 
+It is particularly useful in case of an error or when you want to discard any changes made to the database since the transaction began.
+
+
+
+
+When to Use ROLLBACK:
+Error Handling: If something goes wrong during a transaction (e.g., data is incorrect or an operation fails), 
+you can use ROLLBACK to undo all the changes made in the transaction.
+Transaction Control: If you're unsure about committing changes to the database, ROLLBACK allows you to cancel the entire transaction.
+Consistency: Ensures the database remains consistent by reverting partial changes when an error occurs.
+
+Example Scenario:
+Let's say you're inserting data into two tables: ParentTable and ChildTable. If there is an error when inserting into the ChildTable,
+you might want to revert the insert into the ParentTable as well.
+
+Here’s how you can use ROLLBACK:
+-----------------------
+BEGIN TRY
+    -- Start a transaction
+    BEGIN TRANSACTION;
+
+    -- Insert into ParentTable
+    INSERT INTO ParentTable (ParentName) 
+    VALUES ('Apple Inc.');
+
+    -- Simulate an error by trying to insert invalid data into ChildTable
+    INSERT INTO ChildTable (ParentID, ChildName) 
+    VALUES (999, 'Child 1');  -- Assume 999 is not a valid ParentID
+
+    -- If all goes well, commit the transaction
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    -- If an error occurs, rollback the transaction
+    ROLLBACK TRANSACTION;
+
+    -- Optional: Return the error message
+    THROW;
+END CATCH;
+-----------
+Explanation:
+BEGIN TRANSACTION;: Starts the transaction.
+COMMIT TRANSACTION;: If no error occurs, the changes are saved (committed) to the database.
+ROLLBACK TRANSACTION;: If an error occurs, the changes made during the transaction are undone (rolled back).
+THROW;: Rethrows the error to propagate it to the calling application or user.
+Why Use ROLLBACK:
+Error Handling: It ensures that if any part of the transaction fails, the database remains in a consistent state.
+Preventing Inconsistent Data: Without ROLLBACK, some changes may be applied to the database, leading to incomplete or inconsistent data.
+In short, ROLLBACK is your safeguard against unintentional or partial changes when a transaction fails or needs to be aborted.
