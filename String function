@@ -1,3 +1,8 @@
 ############String function #################
 -String functions in MS SQL Server are used to manipulate and work with string data types. Below are some commonly used string functions:
+1. LEN()
+----Returns the length of a string (number of characters).
+SELECT LEN('SQL Server'); -- Output: 10
+
+
 
