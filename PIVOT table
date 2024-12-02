@@ -1,0 +1,80 @@
+A PIVOT table in SQL Server is used to transform rows into columns, which is especially useful for generating summarized reports.
+
+Syntax for PIVOT:
+-------------------------------------
+SELECT <column_list>
+FROM 
+(
+    <source_query>
+) AS SourceTable
+PIVOT
+(
+    <aggregate_function>(<value_column>)
+    FOR <pivot_column> IN (<pivot_values>)
+) AS PivotTable;
+------------------------------
+
+Example: Sales Data Pivot
+Source Table: Sales
+Product	Year	Sales
+ProductA	2021	500
+ProductA	2022	600
+ProductB	2021	300
+ProductB	2022	400
+----------------------------
+Goal: Transform Year values into columns and sum up the Sales.
+Product	[2021]	[2022]
+ProductA	500	600
+ProductB	300	400
+-------------------------------------
+
+SELECT Product, [2021], [2022]
+FROM 
+(
+    SELECT Product, Year, Sales
+    FROM Sales
+) AS SourceTable
+PIVOT
+(
+    SUM(Sales)
+    FOR Year IN ([2021], [2022])
+) AS PivotTable;
+-------------------------------------
+
+Explanation:
+Source Query: SELECT Product, Year, Sales FROM Sales retrieves the base data.
+PIVOT:
+SUM(Sales): Aggregate function to sum the sales.
+FOR Year IN ([2021], [2022]): Turns Year values (2021, 2022) into columns.
+
+----------
+Output:
+Product	[2021]	[2022]
+ProductA	500	600
+ProductB	300	400
+-----------------
+Notes:
+The column names in the IN clause must be static.
+Use dynamic SQL if the pivot_column values are not known in advance.
+------------------------
+
+
+Step 1: Create the Sales Table
+
+
+CREATE TABLE Sales
+(
+    Product NVARCHAR(50),
+    Year INT,
+    Sales INT
+);
+---------------------------
+Step 2: Insert Sample Data
+INSERT INTO Sales (Product, Year, Sales)
+VALUES
+('ProductA', 2021, 500),
+('ProductA', 2022, 600),
+('ProductB', 2021, 300),
+('ProductB', 2022, 400);
+-----------------------------------
+Step 3: Apply the PIVOT Query
