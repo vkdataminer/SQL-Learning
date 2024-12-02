@@ -1,0 +1,28 @@
+----SQL Injection
+-----SQL Injection is when someone puts harmful SQL code into a web form or URL. 
+-----If the website or application doesn't handle the input properly, 
+-----The harmful code gets executed by the database, and the attacker could access or change sensitive data.
+-----------------------------------------------------------------------------
+Example : Imagine you have a login form where users enter their username and password.
+
+When a user enters their username and password, the application builds a SQL query like this:
+
+SELECT * FROM Users WHERE Username = 'user_input' AND Password = 'user_input';
+If the user enters this in the username field:
+
+Username: admin' --
+Password: (empty)
+The resulting query will look like this:
+
+SELECT * FROM Users WHERE Username = 'admin' --' AND Password = '';
+The -- makes everything after it a comment, so the query becomes:
+
+SELECT * FROM Users WHERE Username = 'admin';
+
+This lets the attacker log in as admin without needing a password, because the query ignores the password check.
+
+
+Simple Tips to Avoid SQL Injection:
+Use Parameters: Always use parameters for user inputs, like @Username and @Password.
+Avoid Directly Inserting User Input: Never directly insert user input into SQL queries.
+Validate Input: Check if the input matches the expected format (e.g., username should only contain letters and numbers).
