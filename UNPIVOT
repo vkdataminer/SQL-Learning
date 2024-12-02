@@ -1,0 +1,78 @@
+---The UNPIVOT operation in SQL Server is used to reverse the PIVOT operation. 
+---It transforms columns back into rows. This is useful when you need to convert columns into row data.
+#########Syntax of UNPIVOT:
+SELECT <column_list>
+FROM 
+(
+    <source_query>
+) AS SourceTable
+UNPIVOT
+(
+    <value_column> FOR <pivot_column> IN (<column_list_to_unpivot>)
+) AS UnpivotTable;
+---------------------------------
+
+value_column: The name of the new column that will hold the unpivoted data.
+pivot_column: The name of the new column that will hold the column names (turned into row values).
+IN (<columns>): The list of columns to unpivot.
+
+---------------------------
+Example: Unpivoting Monthly Sales Data
+Consider the following Sales table:
+
+Product	January	February	March
+ProductA	500	600	700
+ProductB	300	400	500
+------------------
+
+Step 1: Create the Sales Table
+
+CREATE TABLE Sales
+(
+    Product NVARCHAR(50),
+    January INT,
+    February INT,
+    March INT
+);
+
+-----------------
+Step 2: Insert Sample Data
+INSERT INTO Sales (Product, January, February, March)
+VALUES
+('ProductA', 500, 600, 700),
+('ProductB', 300, 400, 500);
+--------------------
+Step 3: Apply the UNPIVOT Query
+
+SELECT Product, Month, Sales
+FROM 
+(
+    SELECT Product, January, February, March
+    FROM Sales
+) AS SourceTable
+UNPIVOT
+(
+    Sales FOR Month IN (January, February, March)
+) AS UnpivotTable;
+-------------------------------------
+
+Explanation:
+Source Query:
+SELECT Product, January, February, March FROM Sales: Selects the columns you want to unpivot.
+UNPIVOT:
+Sales FOR Month IN (January, February, March): This turns the columns January, February, and March into rows under a new column Month.
+
+----------------------------
+Expected Output:
+Product	Month	Sales
+ProductA	January	500
+ProductA	February	600
+ProductA	March	700
+ProductB	January	300
+ProductB	February	400
+ProductB	March	500
+
+-----------Key Points:
+UNPIVOT takes multiple columns and turns them into row data.
+The result has two columns: one for the original column names (Month) and one for the data (Sales).
+This operation is the reverse of PIVOT.
