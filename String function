@@ -4,5 +4,9 @@
 ----Returns the length of a string (number of characters).
 SELECT LEN('SQL Server'); -- Output: 10
 
+2. LEFT()
+Extracts a specified number of characters from the start of a string.
+
+
 
 
