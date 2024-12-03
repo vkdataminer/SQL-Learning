@@ -1,0 +1,22 @@
+----Normalization in MS SQL
+Normalization is the process of organizing data in a database to reduce redundancy (duplicate data) and improve data integrity. 
+It involves dividing large tables into smaller ones and defining relationships between them.
+
+##Why Normalize?
+Eliminate redundant data: Reduce duplicate storage.
+Ensure data integrity: Keep data consistent.
+Make database easier to maintain and update.
+
+#Normalization Process
+Normalization is done in stages, called Normal Forms (NF). Each stage builds on the previous one.
+
+--------------------------------
+Example: Student Database
+Step 1: Unnormalized Table (UNF)
+Suppose we have a single table:
+
+StudentID	StudentName	Course	Instructor
+1	Alice	Math	Prof. Brown
+2	Bob	Science, Math	Dr. White, Prof. Brown
+3	Charlie	History	Dr. Green
+
